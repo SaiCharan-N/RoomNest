@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'Node 20'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo 'Checking out RoomNest source code...'
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing backend dependencies...'
+                bat 'npm install --prefix server'
+
+                echo 'Installing frontend dependencies...'
+                bat 'npm install --prefix client'
+            }
+        }
+
+        stage('Backend Tests') {
+            steps {
+                echo 'Running backend tests...'
+                bat 'npm test --prefix server'
+            }
+        }
+
+        stage('Frontend Tests') {
+            steps {
+                echo 'Running frontend tests...'
+                bat 'npm test --prefix client'
+            }
+        }
+
+        stage('Frontend Build') {
+            steps {
+                echo 'Building React frontend...'
+                bat 'npm run build --prefix client'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo 'Building RoomNest backend Docker image...'
+                bat 'docker build -t roomnest-backend ./server'
+
+                echo 'Building RoomNest frontend Docker image...'
+                bat 'docker build -t roomnest-frontend ./client'
+            }
+        }
+        stage('Deploy') {
+    steps {
+        echo 'Deploying RoomNest using Docker Compose...'
+
+        bat 'docker compose down'
+        bat 'docker compose up -d --build'
+
+        echo 'Checking deployed containers...'
+        bat 'docker compose ps'
+    }
+}
+    }
+
+    post {
+        success {
+            echo 'RoomNest CI pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'RoomNest CI pipeline failed. Check the stage logs.'
+        }
+    }
+}

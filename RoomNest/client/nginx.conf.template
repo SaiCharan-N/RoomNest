@@ -1,0 +1,52 @@
+# Rendered at container start: the official nginx image substitutes
+# ${BACKEND_HOST} and ${BACKEND_PORT} from the environment (see Dockerfile).
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Room photos can be uploaded through this proxy (up to 6 files x 5 MB)
+    client_max_body_size 30m;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Liveness/readiness endpoint for Docker and Kubernetes probes
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 'ok';
+    }
+
+    # API and uploaded images are forwarded to the backend, so the browser only
+    # ever talks to one origin (no CORS setup or rebuild needed per environment)
+    location /api/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Hashed build assets can be cached aggressively
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # Single-page app: unknown paths (e.g. /rooms/123 on refresh) serve index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

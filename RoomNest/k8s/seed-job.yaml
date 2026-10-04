@@ -1,0 +1,39 @@
+# Optional: loads the sample rooms and demo accounts. It is NOT part of
+# kustomization.yaml because it wipes existing data. Run it on demand:
+#   kubectl apply -f k8s/seed-job.yaml
+#   kubectl -n roomnest logs job/seed-data
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-data
+  namespace: roomnest
+  labels:
+    app.kubernetes.io/name: seed-data
+    app.kubernetes.io/part-of: roomnest
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seed-data
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: seed
+          image: roomnest-backend:latest
+          imagePullPolicy: IfNotPresent
+          command: ["node", "seed/seed.js"]
+          envFrom:
+            - configMapRef:
+                name: roomnest-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: roomnest-secret
+                  key: JWT_SECRET

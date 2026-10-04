@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roomnest-config
+  labels:
+    app.kubernetes.io/part-of: roomnest
+data:
+  PORT: "5000"
+  # "mongodb" is the name of the MongoDB Service in this namespace
+  MONGO_URI: "mongodb://mongodb:27017/roomnest"
+  JWT_EXPIRES_IN: "7d"
+  # Browser origin of the app (the frontend NodePort); used by the API's CORS rule
+  CLIENT_URL: "http://localhost:30080"
